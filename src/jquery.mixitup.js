@@ -86,6 +86,7 @@
 			_$body: null,
 			_$container: null,
 			_$targets: null,
+			_$comments: null, // adam
 			_$parent: null,
 			_$sortButtons: null,
 			_$filterButtons: null,
@@ -384,6 +385,11 @@
 			self._execAction('_refresh', 0, arguments);
 
 			self._$targets = self._$container.find(self.selectors.target);
+
+			// adam: populate comments
+			self._$comments = self._$container.contents().filter(function() {
+				return this.nodeType === 8;
+			});
 			
 			for(var i = 0; i < self._$targets.length; i++){
 				var target = self._$targets[i];
@@ -719,7 +725,8 @@
 				order = reset ? self._startOrder : self._newOrder,
 				targets = self._$parent[0].querySelectorAll(self.selectors.target),
 				nextSibling = targets.length ? targets[targets.length -1].nextElementSibling : null,
-				frag = document.createDocumentFragment();
+				frag = document.createDocumentFragment(),
+				commentCopy = self._$comments.clone(true); // adam: dupe nodes
 				
 			self._execAction('_printSort', 0, arguments);
 			
@@ -735,23 +742,44 @@
 				
 				self._$parent[0].removeChild(target);
 			}
+
+			// adam: get current comments and delete them
+			var curComments = self._$container.contents().filter(function() {
+				return this.nodeType === 8;
+			});
+			for(var i = 1; i < curComments.length; i++){
+				curComments.get(i).remove();
+			}	
+			// frag.appendChild(commentCopy.get(0));
 			
 			for(var i = 0; i < order.length; i++){
 				var el = order[i];
 
-				if(self._newSort[0].sortBy === 'default' && self._newSort[0].order === 'desc' && !reset){
-					var firstChild = frag.firstChild;
-					frag.insertBefore(el, firstChild);
-					frag.insertBefore(document.createTextNode(' '), el);
+				if (nextSibling) {
+					self._$parent[0].insertBefore(el, nextSibling);
+					self._$parent[0].insertBefore(commentCopy.get(i+1), el);
+					self._$parent[0].insertBefore(document.createTextNode(' '), el);				
 				} else {
-					frag.appendChild(el);
-					frag.appendChild(document.createTextNode(' '));
+					self._$parent[0].appendChild(el);				
+					self._$parent[0].appendChild(document.createTextNode(' '));				
+					self._$parent[0].appendChild(commentCopy.get(i+1));									
 				}
+
+				// if(self._newSort[0].sortBy === 'default' && self._newSort[0].order === 'desc' && !reset){
+				// 	var firstChild = frag.firstChild;
+				// 	frag.insertBefore(el, firstChild);
+				// 	frag.insertBefore(commentCopy.get(i+1), el);
+				// 	frag.insertBefore(document.createTextNode(' '), el);
+				// } else {
+				// 	frag.appendChild(el);
+				// 	frag.appendChild(document.createTextNode(' '));
+				// 	frag.appendChild(commentCopy.get(i+1));
+				// }
 			}
 			
-			nextSibling ? 
-				self._$parent[0].insertBefore(frag, nextSibling) :
-				self._$parent[0].appendChild(frag);
+			// nextSibling ? 
+			// 	self._$parent[0].insertBefore(frag, nextSibling) :
+			// 	self._$parent[0].appendChild(frag);
 				
 			self._execAction('_printSort', 1, arguments);
 		},
@@ -875,6 +903,7 @@
 				activeSort: future && self._newSortString ? self._newSortString : self._activeSort,
 				fail: !self._$show.length && self._activeFilter !== '',
 				$targets: self._$targets,
+				$comments: self._$comments,
 				$show: self._$show,
 				$hide: self._$hide,
 				totalTargets: self._$targets.length,
@@ -1958,8 +1987,8 @@
 			for(var i = 0; i < self._$targets.length; i++){
 				var target = self._$targets[i];
 
-				hideAll && (target.style.display = '');
-
+				hideAll && (target.style.display = '');  
+				target.style.display = 'none'; // adam: changed from '' 
 				delete target.mixParent;
 			}
 			
